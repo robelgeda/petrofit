@@ -384,6 +384,8 @@ def source_photometry(source, image, segm_deblend, r_list, error=None, cutout_si
 
             * `error_arr`: if error map is provided, error of measurements.
     """
+    if plot:
+        print(source.label)
 
     # Get source geometry
     # -------------------
@@ -440,9 +442,27 @@ def source_photometry(source, image, segm_deblend, r_list, error=None, cutout_si
 
                 fitted_model, _ = fit_background(fit_bg_image, sigma=None)
 
-                masked_image -= model_to_image(fitted_model, cutout_size)
+                bg_image = model_to_image(fitted_model, cutout_size)
+                masked_image -= bg_image
                 if sigma_type.lower() == 'bound':
                     masked_image = np.clip(masked_image, - sigma, np.inf)
+
+                if plot:
+                    fig, ax = plt.subplots(1, 2, figsize=[24, 12])
+
+                    plt.sca(ax[0])
+                    plt.imshow(fit_bg_image, vmin=vmin, vmax=fit_bg_image.mean() * 10 if vmax is None else vmax)
+                    plt.title("Masked Background Image")
+                    plt.xlabel("Pixels")
+                    plt.ylabel("Pixels")
+
+                    plt.sca(ax[1])
+                    plt.imshow(bg_image, cmap='jet')
+                    plt.title("Fitted Background Plane")
+                    plt.xlabel("Pixels")
+                    plt.ylabel("Pixels")
+
+                    plt.show()
 
         elif plot:
             print("bkg_sub: Not enough datapoints, did not subtract.")
@@ -456,7 +476,6 @@ def source_photometry(source, image, segm_deblend, r_list, error=None, cutout_si
     position = np.array(masked_image.data.shape) / 2.
 
     if plot:
-        print(source.label)
         fig, ax = plt.subplots(1, 2, figsize=[24, 12])
 
     if plot:

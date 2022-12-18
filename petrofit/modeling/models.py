@@ -474,9 +474,6 @@ class PSFConvolvedModel2D(FittableModel):
             # Sample the sub-model onto the sub-grid
             sub_model_oversampled_image = self._model.evaluate(x_sub_grid, y_sub_grid, *sub_model_params)
 
-            # Block reduce the window to the main image resolution
-            sub_model_image = block_reduce(sub_model_oversampled_image, sub_grid_factor) / sub_grid_factor ** 2
-
             # Compute window indices in main image frame
             i_sub_min = int(np.round(sub_grid_origin[0]))
             j_sub_min = int(np.round(sub_grid_origin[1]))
@@ -493,11 +490,37 @@ class PSFConvolvedModel2D(FittableModel):
             if j_sub_max > j.max():
                 j_sub_max = j.max() + 1
 
+            # over_sampled_sub_model_x0 = np.argmin(
+            #     np.abs(x_sub_grid[0, :] - 1 / (2 * sub_grid_factor) - (sub_grid_x0 * sub_grid_factor)))
+            # over_sampled_sub_model_y0 = np.argmin(
+            #     np.abs(y_sub_grid[:, 0] - 1 / (2 * sub_grid_factor) - (sub_grid_y0 * sub_grid_factor)))
+            #
+
+            
+            # sub_model_oversampled_image[
+            #     over_sampled_sub_model_y0,
+            #     over_sampled_sub_model_x0
+            # ] = self._model.evaluate(sub_grid_x0, sub_grid_y0, *args[self.n_inputs:])
+
+            # if isinstance(self.model, CompoundModel):
+            #     coords = get_swap_coords(self.model)
+            #     for x, y in coords:
+            #         px, py = np.floor(np.array([x, y])).astype(int)
+            #         if i_sub_min >= px > i_sub_max  or j_sub_min >= py > j_sub_max:
+            #             continue
+            #         model_image[py-j_sub_min, px-i_sub_min] = self.model(x, y)
+
+            # Block reduce the window to the main image resolution
+            sub_model_image = block_reduce(sub_model_oversampled_image, sub_grid_factor) / sub_grid_factor ** 2
+
             # Add oversampled window to image
             model_image[
             j_sub_min:j_sub_max,
             i_sub_min:i_sub_max
             ] = sub_model_image
+
+
+
 
         # PSF convolve
         # ------------
@@ -518,6 +541,24 @@ class PSFConvolvedModel2D(FittableModel):
         """
         return self._param_names
 
+from astropy.modeling import CompoundModel
+def get_swap_coords(compound_model):
+    coords = []
+    for sub_model in compound_model:
+        if isinstance(sub_model, CompoundModel):
+            coords += get_swap_coords(sub_model)
+        else:
+            x_0_list = np.where(['x_0' in i for i in sub_model.param_names])[0]
+            y_0_list = np.where(['y_0' in i for i in sub_model.param_names])[0]
+
+            x_0 = None
+            y_0 = None
+            if len(x_0_list) == 1 and len(x_0_list) == 1:
+                x_0 = sub_model.parameters[x_0_list[0]]
+                y_0 = sub_model.parameters[y_0_list[0]]
+                coords.append((x_0, y_0))
+
+    return coords
 
 class GenSersic2D(models.Sersic2D):
     r"""
