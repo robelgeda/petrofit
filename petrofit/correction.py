@@ -7,7 +7,7 @@ from scipy.special import gammaincinv
 
 from astropy.utils.console import ProgressBar
 from astropy.modeling import models
-from astropy import table
+from astropy.table import Table
 
 from petrofit.modeling.models import PSFConvolvedModel2D, sersic_enclosed, sersic_enclosed_inv
 from petrofit.photometry import photometry_step
@@ -20,6 +20,12 @@ __all__ = ['generate_petrosian_sersic_correction']
 
 
 def _generate_petrosian_correction(args):
+    """
+    Helper function to compute corrections for a single pair of `r_eff` and `n`.
+    args should be a list `[r_eff, n, psf, oversample, plot]`. See
+    `generate_petrosian_sersic_correction` doctring for more information.
+    """
+
     r_eff, n, psf, oversample, plot = args
     amplitude = 100 / np.exp(gammaincinv(2. * n, 0.5))
 
@@ -208,7 +214,7 @@ def generate_petrosian_sersic_correction(output_yaml_name, psf=None, r_eff_list=
              'p02', 'p03', 'p04', 'p05', 'p0502', 'p0302',
              'u_epsilon', 'u_epsilon_80', 'u_r_99', 'u_r_20', 'u_r_80', 'u_c2080',
              'c_epsilon', 'c_epsilon_80', 'c_r_99', 'c_r_20', 'c_r_80', 'c_c2080', ]
-    petrosian_grid = table.Table(rows=rows, names=names)
+    petrosian_grid = Table(rows=rows, names=names)
 
     if output_yaml_name is not None:
         try:
