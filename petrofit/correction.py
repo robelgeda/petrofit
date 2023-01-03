@@ -20,12 +20,11 @@ __all__ = ['generate_petrosian_sersic_correction']
 
 
 def _generate_petrosian_correction(args):
-    """
+    '''
     Helper function to compute corrections for a single pair of `r_eff` and `n`.
     args should be a list `[r_eff, n, psf, oversample, plot]`. See
     `generate_petrosian_sersic_correction` doctring for more information.
-    """
-
+    '''
     r_eff, n, psf, oversample, plot = args
     amplitude = 100 / np.exp(gammaincinv(2. * n, 0.5))
 
@@ -109,15 +108,19 @@ def _generate_petrosian_correction(args):
     p02, p03, p04, p05 = [calculate_petrosian_r(p.r_list, p.area_list, p.flux_list, i) for i in (0.2, 0.3, 0.4, 0.5)]
     assert np.round(p.r_petrosian, 6) == np.round(p02, 6)
 
+    u_r_eff = p.fraction_flux_to_r(0.5)
     u_r_20 = p.fraction_flux_to_r(0.2)
     u_r_80 = p.fraction_flux_to_r(0.8)
+
+    c_r_eff = corrected_p.fraction_flux_to_r(0.5)
     c_r_20 = corrected_p.fraction_flux_to_r(0.2)
     c_r_80 = corrected_p.fraction_flux_to_r(0.8)
 
     row = [n, r_eff, r_20, r_80, r_total_flux, r_100,
            p02, p03, p04, p05, 5 * np.log(p02 / p05), 5 * np.log(p02 / p03),
-           p.epsilon, u_r_80 / p.r_petrosian, p.r_total_flux, u_r_20, u_r_80, p.c2080,
-           corrected_epsilon, corrected_epsilon80, corrected_p.r_total_flux, c_r_20, c_r_80, corrected_p.c2080, ]
+           p.epsilon, u_r_80 / p.r_petrosian, u_r_eff, p.r_total_flux, u_r_20, u_r_80, p.c2080,
+           corrected_epsilon, corrected_epsilon80, c_r_eff, corrected_p.r_total_flux, c_r_20, c_r_80,
+           corrected_p.c2080, ]
     if plot:
         corrected_p.plot(True, True)
         plt.show()
@@ -212,8 +215,8 @@ def generate_petrosian_sersic_correction(output_yaml_name, psf=None, r_eff_list=
 
     names = ['n', 'r_eff', 'sersic_r_20', 'sersic_r_80', 'sersic_r_99', 'sersic_r_100',
              'p02', 'p03', 'p04', 'p05', 'p0502', 'p0302',
-             'u_epsilon', 'u_epsilon_80', 'u_r_99', 'u_r_20', 'u_r_80', 'u_c2080',
-             'c_epsilon', 'c_epsilon_80', 'c_r_99', 'c_r_20', 'c_r_80', 'c_c2080', ]
+             'u_epsilon', 'u_epsilon_80', 'u_r_eff', 'u_r_99', 'u_r_20', 'u_r_80', 'u_c2080',
+             'c_epsilon', 'c_epsilon_80', 'c_r_eff', 'c_r_99', 'c_r_20', 'c_r_80', 'c_c2080', ]
     petrosian_grid = Table(rows=rows, names=names)
 
     if output_yaml_name is not None:
