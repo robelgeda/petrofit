@@ -20,11 +20,12 @@ __all__ = ['generate_petrosian_sersic_correction']
 
 
 def _generate_petrosian_correction(args):
-    '''
+    """
     Helper function to compute corrections for a single pair of `r_eff` and `n`.
-    args should be a list `[r_eff, n, psf, oversample, plot]`. See
+    `args` should be a list `[r_eff, n, psf, oversample, plot]`. See
     `generate_petrosian_sersic_correction` doctring for more information.
-    '''
+    """
+    # Unpack params
     r_eff, n, psf, oversample, plot = args
     amplitude = 100 / np.exp(gammaincinv(2. * n, 0.5))
 
@@ -70,11 +71,13 @@ def _generate_petrosian_correction(args):
         theta=0.,
     )
 
-    # PSF weap
+    # Wrap model with PSFConvolvedModel2D
     galaxy_model = PSFConvolvedModel2D(galaxy_model, psf=psf, oversample=oversample)
 
+    # Make galaxy image from PSFConvolvedModel2D
     galaxy_image = model_to_image(galaxy_model, image_size, center=(x_0, y_0))
 
+    # Do photometry on model galaxy image
     flux_list, area_list, err = photometry_step((image_size // 2, image_size // 2), r_list, galaxy_image,
                                                 plot=plot,
                                                 vmax=amplitude / 100)
@@ -144,9 +147,9 @@ def generate_petrosian_sersic_correction(output_yaml_name, psf=None, r_eff_list=
     `r_total_flux`. To achieve this, an image is created from a Sersic model and convolved with a PSF (if provided).
     The Petrosian radii and concentrations are computed using the default `epsilon` = 2. Since the real `r_total_flux`
     of the simulated galaxy is known, the correct `epsilon` can be determined by
-    `epsilon = r_petrosian / corrceted_r_total_flux`. The resulting grid is used to map measured properties to the correct
-    `epsilon` value. If `output_yaml_name` is provided, the grid is saved to using an astropy table file which is readable
-    by `petrofit.petrosian.PetrosianCorrection`.
+    `epsilon = r_petrosian / corrceted_r_total_flux`. The resulting grid is used to map measured properties to the
+    correct `epsilon` value. If `output_yaml_name` is provided, the grid is saved to using an astropy table file which
+    is readable by `petrofit.petrosian.PetrosianCorrection`.
 
     Parameters
     ----------
