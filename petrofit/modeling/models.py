@@ -14,10 +14,30 @@ from astropy.modeling import FittableModel, Parameter, custom_model, models
 
 __all__ = [
     'get_default_sersic_bounds', 'make_grid', 'PSFConvolvedModel2D',
-    'Nuker2D', 'Moffat2D', 'EllipMoffat2D',
+    'Nuker2D', 'Moffat2D', 'EllipMoffat2D', 'Ie_to_I0',
     'sersic_enclosed', 'sersic_enclosed_inv', 'sersic_enclosed_model', 'PetroApprox',
     'petrosian_profile', 'petrosian_model', 'get_default_gen_sersic_bounds', 'GenSersic2D'
 ]
+
+
+def Ie_to_I0(I_e, n):
+    """
+    Converts the sersic intensity at the effective radius (I_e) to the intensity at the 0 radius (I_0)
+    based on the sersic index (n)
+
+    Parameters
+    ----------
+    I_e : float
+        Sersic intensity at the effective radius.
+    n : float
+        Sersic index.
+
+    Returns
+    -------
+    float
+        Intensity at the 0 radius (I_0)
+    """
+    return I_e * np.exp(gammaincinv(2. * n, 0.5))
 
 
 def get_default_sersic_bounds(override={}):

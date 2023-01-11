@@ -67,6 +67,8 @@ def circle_area_to_r(area):
 
 
 def get_interpolated_values(x, y, num=5000, kind='cubic'):
+    if kind is None:
+        return x, y
 
     if len(x) > num:
         num = len(x)

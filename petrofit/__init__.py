@@ -6,7 +6,7 @@
 from ._astropy_init import *   # noqa
 # ----------------------------------------------------------------------------
 
-from .correction import *
+from petrofit.petrosian.correction import *
 
 from .petrosian import *
 from .photometry import *
