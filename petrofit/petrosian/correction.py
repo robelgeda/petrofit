@@ -189,12 +189,12 @@ def _generate_petrosian_correction(args):
     amplitude = 100 / np.exp(gammaincinv(2. * n, 0.5))
 
     # Total flux
-    r_100 = sersic_enclosed(
+    L_total = sersic_enclosed(
         np.inf,
         amplitude=amplitude,
         r_eff=r_eff,
         n=n)
-    total_flux = r_100 * 0.99
+    total_flux = L_total * 0.99
 
     # Calculate radii
     r_20, r_80, r_total_flux = [sersic_enclosed_inv(
@@ -259,7 +259,7 @@ def _generate_petrosian_correction(args):
 
     # Compute corrections
     corrected_epsilon = model_r_total_flux / p.r_petrosian
-    corrected_epsilon80 = model_r_80 / p.r_petrosian
+    corrected_epsilon_80 = model_r_80 / p.r_petrosian
 
     corrected_p = copy(p)
     corrected_p.epsilon = corrected_epsilon
@@ -267,8 +267,8 @@ def _generate_petrosian_correction(args):
     # Make output list
     # ----------------
     # Petrosian indices
-    petrosian_list = calculate_petrosian(p.area_list, p.flux_list)
-    p02, p03, p04, p05 = [calculate_petrosian_r(p.r_list, petrosian_list, eta=i) for i in (0.2, 0.3, 0.4, 0.5)]
+    petrosian_list = calculate_petrosian(p.area_list, p.flux_list)[0]
+    p02, p03, p04, p05 = [calculate_petrosian_r(p.r_list, petrosian_list, eta=i)[0] for i in (0.2, 0.3, 0.4, 0.5)]
     assert np.round(p.r_petrosian, 6) == np.round(p02, 6)
 
     u_r_eff = p.fraction_flux_to_r(0.5)
@@ -279,10 +279,10 @@ def _generate_petrosian_correction(args):
     c_r_20 = corrected_p.fraction_flux_to_r(0.2)
     c_r_80 = corrected_p.fraction_flux_to_r(0.8)
 
-    row = [n, r_eff, r_20, r_80, r_total_flux, r_100,
+    row = [n, r_eff, r_20, r_80, r_total_flux, L_total,
            p02, p03, p04, p05, 5 * np.log(p02 / p05), 5 * np.log(p02 / p03),
            p.epsilon, u_r_80 / p.r_petrosian, u_r_eff, p.r_total_flux, u_r_20, u_r_80, p.c2080,
-           corrected_epsilon, corrected_epsilon80, c_r_eff, corrected_p.r_total_flux, c_r_20, c_r_80,
+           corrected_epsilon, corrected_epsilon_80, c_r_eff, corrected_p.r_total_flux, c_r_20, c_r_80,
            corrected_p.c2080, ]
     if plot:
         corrected_p.plot(True, True)
@@ -382,7 +382,7 @@ def generate_petrosian_sersic_correction(output_yaml_name, psf=None, r_eff_list=
         rows = ProgressBar.map(_generate_petrosian_correction, args, multiprocess=n_cpu,
                                ipython_widget=ipython_widget, step=step)
 
-    names = ['n', 'r_eff', 'sersic_r_20', 'sersic_r_80', 'sersic_r_99', 'sersic_r_100',
+    names = ['n', 'r_eff', 'sersic_r_20', 'sersic_r_80', 'sersic_r_99', 'sersic_L_inf',
              'p02', 'p03', 'p04', 'p05', 'p0502', 'p0302',
              'u_epsilon', 'u_epsilon_80', 'u_r_eff', 'u_r_99', 'u_r_20', 'u_r_80', 'u_c2080',
              'c_epsilon', 'c_epsilon_80', 'c_r_eff', 'c_r_99', 'c_r_20', 'c_r_80', 'c_c2080', ]

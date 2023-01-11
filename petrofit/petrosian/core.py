@@ -344,28 +344,53 @@ def fraction_to_r(fraction, r_list, flux_list, r_petrosian,
     return r_frac, r_frac_err
 
 
-def calculate_concentration_index(r_list, flux_list, r_total_flux, fraction_1=0.2, fraction_2=0.8):
+def calculate_concentration_index(fraction_1, fraction_2,
+                                  r_list, flux_list, r_petrosian,
+                                  flux_err=None, r_petrosian_err=None,
+                                  epsilon=2., epsilon_fraction=0.99,
+                                  interp_kind='cubic', interp_num=5000):
     """
     Calculates Petrosian concentration index.
 
-    ``concentration_index = 5 * np.log10( r(fraction_2) / r(fraction_1) )``
+    ``concentration_index = C_1_2 = 5 * np.log10( r(fraction_2) / r(fraction_1) )``
 
     Parameters
     ----------
+    fraction_1 : float
+        Fraction of total light enclosed by the radius in the denominator.
+
+    fraction_2 : float
+        Fraction of total light enclosed by the radius in the numerator.
+
     r_list : numpy.array
         Array of radii in pixels.
 
     flux_list : numpy.array
         Array of photometric flux values.
 
-    r_total_flux : float
-        Total flux radius (hint: `petrofit.petrosian.calculate_r_total_flux` can be used to measure this).
+    r_petrosian : float
+        Petrosian radius
 
-    fraction_1 : float
-        Fraction of total light enclosed by the radius in the denominator.
+    flux_err : int or numpy.array, optional
+        Array of errors in the flux values. If None, erros are not computed even if
+        `r_petro_err` is provided.
 
-    fraction_2 : float
-        Fraction of total light enclosed by the radius in the numerator.
+    r_petrosian_err : float, optional
+        1-sigma error in r_petro. If set to `None` and `flux_err` is provided,
+        `r_petro_err` is assumed to be 0 when computing errors.
+
+    epsilon : float, default=2.
+            Epsilon value (used to determine `r_epsilon`).
+            N.B: `r_epsilon = r_petrosian` * epsilon`
+
+    epsilon_fraction: float, default=0.99
+        Fraction of total flux that is recovered by `r_petrosian * epsilon`.
+
+    interp_kind : str or int, optional
+        Specifies the kind of interpolation used on the curve of growth (i.e `r_list` vs `flux_list`)
+
+    interp_num : int
+        Number of interpolation function sampling radii.
 
     Returns
     -------
@@ -381,14 +406,21 @@ def calculate_concentration_index(r_list, flux_list, r_total_flux, fraction_1=0.
             Concentration index
     """
 
-    if r_total_flux > max(r_list):
+    r1 = fraction_to_r(fraction_1, r_list, flux_list, r_petrosian,
+                       flux_err=flux_err, r_petrosian_err=r_petrosian_err,
+                       epsilon=epsilon, epsilon_fraction=epsilon_fraction,
+                       interp_kind=interp_kind, interp_num=interp_num)
+
+    r2 = fraction_to_r(fraction_2, r_list, flux_list, r_petrosian,
+                       flux_err=flux_err, r_petrosian_err=r_petrosian_err,
+                       epsilon=epsilon, epsilon_fraction=epsilon_fraction,
+                       interp_kind=interp_kind, interp_num=interp_num)
+
+    r1 = r1[0]
+    r2 = r2[0]
+
+    if np.any(np.isnan(np.array([r1, r2]))):
         return [np.nan, np.nan, np.nan]
-
-    r1 = fraction_flux_to_r(r_list, flux_list, r_total_flux, fraction=fraction_1)
-    r2 = fraction_flux_to_r(r_list, flux_list, r_total_flux, fraction=fraction_2)
-
-    # if np.any(np.isnan(np.array([r1, r2]))):
-    #     return [np.nan, np.nan, np.nan]
 
     return r1, r2, 5 * np.log10(r2 / r1)
 
@@ -492,6 +524,52 @@ class Petrosian:
                                                                       flux_err=self.flux_err)
         self.has_petrosian_err = self.petrosian_err is not None
 
+    def _calculate_petrosian_r(self):
+        return calculate_petrosian_r(self.r_list, self.petrosian_list,
+                                     petrosian_err=self.petrosian_err,
+                                     eta=self.eta,
+                                     interp_kind=self.interp_kind,
+                                     interp_num=self.interp_num)
+
+    def _calculate_fraction_to_r(self, fraction):
+        return fraction_to_r(fraction, self.r_list, self.flux_list, self.r_petrosian,
+                             flux_err=self.flux_err, r_petrosian_err=self.r_petrosian_err,
+                             epsilon=self.epsilon, epsilon_fraction=self.epsilon_fraction,
+                             interp_kind=self.interp_kind, interp_num=self.interp_num)
+
+    def concentration_index(self, fraction_1=0.2, fraction_2=0.8):
+        """
+        Calculates Petrosian concentration index.
+
+        ``concentration_index = C_1_2 = 5 * np.log10( r(fraction_2) / r(fraction_1) )``
+
+        Parameters
+        ----------
+        fraction_1 : float
+            Fraction of total light enclosed by the radius in the denominator.
+
+        fraction_2 : float
+            Fraction of total light enclosed by the radius in the numerator.
+
+        Returns
+        -------
+        r_fraction_1, r_fraction_2, concentration_index
+
+            * r_fraction_1 : float or np.nan
+                Radius containing `fraction_1` of the total flux.
+
+            * r_fraction_2: float or np.nan
+                Radius containing `fraction_2` of the total flux.
+
+            * concentration_index : float or np.nan
+                Concentration index
+        """
+        return calculate_concentration_index(fraction_1, fraction_2,
+                                             self.r_list, self.flux_list, self.r_petrosian,
+                                             flux_err=self.flux_err, r_petrosian_err=self.r_petrosian_err,
+                                             epsilon=self.epsilon, epsilon_fraction=self.epsilon_fraction,
+                                             interp_kind=self.interp_kind, interp_num=self.interp_num)
+
     @property
     def r_list(self):
         return self._r_list
@@ -547,19 +625,6 @@ class Petrosian:
     @total_flux_fraction.setter
     def total_flux_fraction(self, value):
         self._total_flux_fraction = value
-
-    def _calculate_petrosian_r(self):
-        return calculate_petrosian_r(self.r_list, self.petrosian_list,
-                                     petrosian_err=self.petrosian_err,
-                                     eta=self.eta,
-                                     interp_kind=self.interp_kind,
-                                     interp_num=self.interp_num)
-
-    def _calculate_fraction_to_r(self, fraction):
-        return fraction_to_r(fraction, self.r_list, self.flux_list, self.r_petrosian,
-                             flux_err=self.flux_err, r_petrosian_err=self.r_petrosian_err,
-                             epsilon=self.epsilon, epsilon_fraction=self.epsilon_fraction,
-                             interp_kind=self.interp_kind)
 
     @property
     def r_petrosian(self):
@@ -655,36 +720,6 @@ class Petrosian:
             return pixel_to_angular(r_total_flux, wcs).value
         return np.nan
 
-    def concentration_index(self, fraction_1=0.2, fraction_2=0.8):
-        """
-        Calculates Petrosian concentration index.
-
-        ``concentration_index = 5 * np.log10( r(fraction_2) / r(fraction_1) )``
-
-        Parameters
-        ----------
-        fraction_1 : float
-            Fraction of total light enclosed by the radius in the denominator.
-
-        fraction_2 : float
-            Fraction of total light enclosed by the radius in the numerator.
-
-        Returns
-        -------
-        r_fraction_1, r_fraction_2, concentration_index
-
-            * r_fraction_1 : float or np.nan
-                Radius containing `fraction_1` of the total flux.
-
-            * r_fraction_2: float or np.nan
-                Radius containing `fraction_2` of the total flux.
-
-            * concentration_index : float or np.nan
-                Concentration index
-        """
-        return calculate_concentration_index(self.r_list, self.flux_list, self.r_total_flux,
-                                             fraction_1=fraction_1, fraction_2=fraction_2)
-
     @property
     def c2080(self):
         """``c2080 = 5 * np.log10(r_80 / r_20)``"""
@@ -695,7 +730,34 @@ class Petrosian:
         """``c5090 = 5 * np.log10(r_90 / r_50)``"""
         return self.concentration_index(fraction_1=0.5, fraction_2=0.9)[-1]
 
-    def plot(self, plot_r=False, plot_normalized_flux=False):
+    def _plot_radii(self, ax, radius_unit='pix', err_capsize=3, ):
+        radius_unit = '' if radius_unit is None else str(radius_unit)
+
+        r_petrosian = self.r_petrosian
+        if not np.isnan(r_petrosian):
+            ax.axvline(r_petrosian, linestyle='--',
+                       label="$r(\eta_{{{}}})={:0.4f}$ {}".format(self.eta, r_petrosian, radius_unit))
+
+        r_epsilon = self.r_petrosian * self.epsilon
+        if not np.isnan(r_epsilon):
+            epsilon_fraction = int(self.epsilon_fraction * 100)
+            ax.axvline(r_epsilon, linestyle='--', c='green',
+                       label="$r_{{\epsilon}}(L_{{{}}}, \epsilon = {}) = {:0.4f}$ {}".format(epsilon_fraction,
+                                                                                             self.epsilon, r_epsilon,
+                                                                                             radius_unit))
+
+        r_total_flux = self.r_total_flux
+        if not np.isnan(r_total_flux):
+            total_flux_fraction = int(self.total_flux_fraction * 100)
+            ax.axvline(r_total_flux, linestyle='--', c='black',
+                       label="$r_{{total}}(L_{{{}}}) = {:0.4f}$ {}".format(total_flux_fraction, r_total_flux,
+                                                                           radius_unit))
+
+    def plot(self, plot_r=False, show_normalized_flux=False,
+             title='Petrosian Profile', radius_unit='pix',
+             ax=None, err_alpha=0.2, err_capsize=3,
+             show_legend=True, legend_fontsize=None,
+             ax_fontsize=None, tick_fontsize=None):
         """
         Plots Petrosian profile.
 
@@ -707,10 +769,83 @@ class Petrosian:
         plot_normalized_flux:
             Over-plot the flux curve of growth by normalizing the flux axis (max_flux=1).
         """
-        plot_petrosian(self.r_list, self.area_list, self.flux_list, epsilon=self.epsilon, eta=self.eta, plot_r=plot_r)
+        radius_unit = '' if radius_unit is None else str(radius_unit)
+        if ax is None:
+            ax = plt.gca()
 
-        if plot_normalized_flux:
-            plt.plot(self.r_list, self.flux_list / self.flux_list.max(), label='Normalized Flux', linestyle='--')
+        ax.errorbar(self.r_list, self.petrosian_list, yerr=self.petrosian_err,
+                    marker='o', capsize=err_capsize,
+                    label="Data")
+
+        if err_alpha is not None and self.has_petrosian_err and err_alpha > 0:
+            ax.fill_between(self.r_list,
+                            self.petrosian_list - self.petrosian_err,
+                            self.petrosian_list + self.petrosian_err,
+                            alpha=err_alpha)
+
+        r_petrosian = self.r_petrosian
+        r_petrosian_err = self.r_petrosian_err
+        if not np.isnan(r_petrosian) and not np.isnan(r_petrosian_err):
+            ax.errorbar(r_petrosian, self.eta, xerr=r_petrosian_err,
+                        marker='o', capsize=err_capsize)
+        ax.axhline(self.eta, linestyle='--')
+
+        ax.axhline(0, c='black')
+
+        self._plot_radii(ax, radius_unit=radius_unit, err_capsize=err_capsize)
+
+        ax.set_title(title, fontsize=ax_fontsize)
+        ax.set_xlabel("Aperture Radius" + " [{}]".format(radius_unit) if radius_unit else "", fontsize=ax_fontsize)
+        ax.set_ylabel("Petrosian Value $\eta(r)$", fontsize=ax_fontsize)
+
+        ax.tick_params(axis='both', which='major', labelsize=tick_fontsize)
+        ax.tick_params(axis='both', which='minor', labelsize=tick_fontsize)
+
+        if show_legend:
+            ax.legend(fontsize=legend_fontsize)
+
+        return ax
+
+    def plot_cog(self, plot_r=False, show_normalized_flux=False,
+                 title='Petrosian Profile', radius_unit='pix',
+                 ax=None, err_alpha=0.2, err_capsize=3,
+                 show_legend=True, legend_fontsize=None,
+                 ax_fontsize=None, tick_fontsize=None):
+        """
+        """
+        radius_unit = '' if radius_unit is None else str(radius_unit)
+        if ax is None:
+            ax = plt.gca()
+
+        ax.errorbar(self.r_list, self.flux_list, yerr=self.flux_err,
+                    marker='o', capsize=err_capsize,
+                    label="Data")
+
+        if err_alpha is not None and self.has_petrosian_err and err_alpha > 0:
+            ax.fill_between(self.r_list,
+                            self.flux_list - self.flux_err,
+                            self.flux_list + self.flux_err,
+                            alpha=err_alpha)
+
+        self._plot_radii(ax, radius_unit=radius_unit, err_capsize=err_capsize)
+
+        total_flux = self.total_flux
+        if not np.isnan(total_flux):
+            ax.axhline(total_flux, linestyle='--', c='black', )
+
+        ax.axhline(0, c='black')
+
+        ax.set_title(title, fontsize=ax_fontsize)
+        ax.set_xlabel("Aperture Radius" + " [{}]".format(radius_unit) if radius_unit else "", fontsize=ax_fontsize)
+        ax.set_ylabel("Petrosian Value $\eta(r)$", fontsize=ax_fontsize)
+
+        ax.tick_params(axis='both', which='major', labelsize=tick_fontsize)
+        ax.tick_params(axis='both', which='minor', labelsize=tick_fontsize)
+
+        if show_legend:
+            ax.legend(fontsize=legend_fontsize)
+
+        return ax
 
     def imshow(self, position=(0, 0), elong=1., theta=0., color=None, lw=None):
         """
@@ -735,7 +870,8 @@ class Petrosian:
         """
 
         labels = ['r_half_light', 'r_total_flux', 'r_20', 'r_80']
-        radii = [self.r_half_light, self.r_total_flux, self.fraction_flux_to_r(.2), self.fraction_flux_to_r(.8)]
+        radii = [self.r_half_light, self.r_total_flux, self._calculate_fraction_to_r(.2)[0],
+                 self._calculate_fraction_to_r(.8)[0]]
         colors = ['r', 'r', 'b', 'b']
         linestyles = ['dashed', 'solid', 'dotted', 'dashdot']
 
@@ -745,4 +881,3 @@ class Petrosian:
                     label=label, linestyle=ls, color=color if color else default_color, lw=lw)
 
         plt.scatter(*position, marker='+', color=color if color else 'red')
-
