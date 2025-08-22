@@ -227,7 +227,7 @@ class PSFConvolvedModel2D(FittableModel):
 
         model = self._model.copy()
         for param in model.param_names:
-            setattr(model, param, getattr(self, param).value)
+            getattr(model, param).value = getattr(self, param).value
 
         fixed = copy(self.fixed)
         del fixed["psf_pa"]
