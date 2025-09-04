@@ -12,7 +12,7 @@ from astropy.stats import sigma_clip, gaussian_sigma_to_fwhm
 from astropy.nddata import CCDData, Cutout2D
 from astropy.convolution.utils import discretize_model
 
-from ..utils import mpl_tick_frame
+from ..plotting import mpl_tick_frame, subplots, imshow
 
 from matplotlib import pyplot as plt
 
@@ -334,10 +334,9 @@ def plot_fit(
     center=None,
     vmin=None,
     vmax=None,
-    cbar=True,
     fontsize=18,
-    figsize=[18, 6],
-    flux_label="Pixel Value",
+    cmap=None,
+    imshow_kwargs=None,
 ):
     """
     Plot fitted model, its 1D fit profile and residuals.
@@ -398,22 +397,27 @@ def plot_fit(
     vmax : float
         Max plot value
 
-    cbar : bool
-        Show color-bar if True.
-
     fontsize : int
         Font size of labels.
 
     figsize : tuple
         Figure size, should be (3*size, size).
 
-    flux_label : str
-        Label for color-bar.
+    imshow_kwargs : dict
+        Additional keyword arguments passed to `imshow`.
 
     Returns
     -------
-    axs, cbar, model_image, residual_image : (array of `.axes.Axes`, cbar, array, array)
+    axs, model_image, residual_image : (array of `.axes.Axes`, array, array)
     """
+
+    if imshow_kwargs is None:
+        imshow_kwargs = {}
+    
+    for arg, param in zip([vmin, vmax, cmap], ['vmin', 'vmax', 'cmap']):
+        if arg is not None:
+            assert param not in list(imshow_kwargs.keys()), f"{param} cannot be both in imshow_kwargs and as a parameter."
+            imshow_kwargs[param] = arg
 
     if isinstance(image, (CCDData, Cutout2D)):
         image = image.data
@@ -433,7 +437,7 @@ def plot_fit(
 
     # Plot Model Image
     # ----------------
-    fig, axs = plt.subplots(1, 3, figsize=figsize)
+    fig, axs = subplots(1, 3, label_gap=0)
 
     # If vmin and vmax are not provided, compute them
     if vmax is None:
@@ -441,20 +445,20 @@ def plot_fit(
     if vmin is None:
         vmin = -vmax
 
-    im0 = axs[0].imshow(image, vmin=vmin, vmax=vmax)
+    im0 = imshow(image, ax=axs[0], **imshow_kwargs)
     axs[0].set_title("Data", fontsize=fontsize)
     axs[0].set_xlabel("Pixels", fontsize=fontsize)
     axs[0].set_ylabel("Pixels", fontsize=fontsize)
     axs[0].tick_params(axis="both", labelsize=fontsize)
     mpl_tick_frame(ax=axs[0])
 
-    axs[1].imshow(model_image, vmin=vmin, vmax=vmax)
+    imshow(model_image, ax=axs[1], **imshow_kwargs)
     axs[1].set_title("Model", fontsize=fontsize)
     axs[1].set_xlabel("Pixels", fontsize=fontsize)
     axs[1].tick_params(axis="both", labelsize=fontsize)
     mpl_tick_frame(ax=axs[1])
 
-    axs[2].imshow(residual_image, vmin=vmin, vmax=vmax)
+    imshow(residual_image, ax=axs[2], **imshow_kwargs)
     axs[2].set_title("Residual", fontsize=fontsize)
     axs[2].set_xlabel("Pixels", fontsize=fontsize)
     axs[2].tick_params(axis="both", labelsize=fontsize)
@@ -466,14 +470,7 @@ def plot_fit(
     axs[1].set_yticklabels([])
     axs[2].set_yticklabels([])
 
-    fig_cbar = None
-    if cbar:
-        cbar_ax = fig.add_axes([0.1, 0.08, 0.7, 0.05])
-        fig_cbar = fig.colorbar(im0, cax=cbar_ax, aspect=40, orientation="horizontal")
-        fig.subplots_adjust(bottom=0.23)
-        fig_cbar.ax.set_xlabel(flux_label, fontsize=fontsize)
-
-    return axs, fig_cbar, model_image, residual_image
+    return axs, model_image, residual_image
 
 
 def measure_fwhm(image, plot=True, printout=True):
