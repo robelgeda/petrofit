@@ -42,7 +42,7 @@ def figure(**kwargs):
         return plt.figure(**kwargs)
 
 
-def subplots(nrows=1, ncols=1, label_gap=0.3, **kwargs):
+def subplots(nrows=1, ncols=1, label_gap=0.25, **kwargs):
     """Create a new subplots with package styling applied."""
     with package_plot_style():
         if 'figsize' not in kwargs:
@@ -52,9 +52,10 @@ def subplots(nrows=1, ncols=1, label_gap=0.3, **kwargs):
                 kwargs.setdefault('figsize', (FIG_UNIT_MAX_WIDTH, FIG_UNIT_MAX_WIDTH))
             else:
                 kwargs.setdefault('figsize', (FIG_UNIT_MAX_WIDTH, (FIG_UNIT_MAX_WIDTH * nrows / ncols) - label_gap))
-                if label_gap != 0 and 'gridspec_kw' not in kwargs:
-                    gridspec_kw = {'wspace': label_gap}
-                    kwargs.setdefault('gridspec_kw', gridspec_kw)
+            
+            if label_gap != 0 and 'gridspec_kw' not in kwargs:
+                gridspec_kw = {'wspace': label_gap, 'hspace': label_gap}
+                kwargs.setdefault('gridspec_kw', gridspec_kw)
 
         return plt.subplots(nrows=nrows, ncols=ncols, **kwargs)
 
@@ -779,7 +780,7 @@ def  _petrosian_plot(
         )
         ax.set_ylabel(r"Petrosian Index $\eta(r)$", fontsize=ax_fontsize)
 
-        mpl_tick_frame(minorticks=True, tick_fontsize=tick_fontsize)
+        mpl_tick_frame(ax=ax, minorticks=True, tick_fontsize=tick_fontsize)
 
         ax.set_xlim(0, None)
         if show_legend:
