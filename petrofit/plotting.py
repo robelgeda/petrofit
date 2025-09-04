@@ -594,7 +594,7 @@ def _petrosian_plot_cog(
             fontsize=ax_fontsize,
         )
 
-        mpl_tick_frame(minorticks=True, tick_fontsize=tick_fontsize)
+        mpl_tick_frame(ax=ax, minorticks=True, tick_fontsize=tick_fontsize)
 
         ax.set_xlim(0, None)
         ax.set_ylim(0, None)
