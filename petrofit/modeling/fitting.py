@@ -22,7 +22,6 @@ __all__ = [
     "fit_gaussian2d",
     "print_model_params",
     "plot_fit",
-    "measure_fwhm",
 ]
 
 
