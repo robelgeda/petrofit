@@ -13,7 +13,7 @@ from astropy.table import Table
 from ..modeling.models import PSFConvolvedModel2D, sersic_enclosed, sersic_enclosed_inv
 from ..modeling.fitting import model_to_image
 from ..photometry import radial_photometry
-from ..plotting import mpl_tick_frame, figure, subplots, _plot_correction_grid
+from ..plotting import subplots, _plot_correction_grid
 from .core import Petrosian, calculate_petrosian_r, calculate_petrosian
 
 from matplotlib import pyplot as plt
@@ -167,11 +167,11 @@ def _generate_petrosian_correction(args):
     ]
 
     if plot:
-        fig, axs = plt.subplots(1, 2, figsize=[12, 6])
+        fig, axs = subplots(1, 2)
         plt.sca(axs[0])
-        corrected_p.plot()
+        corrected_p.plot(ax=axs[0])
         plt.sca(axs[1])
-        corrected_p.plot_cog()
+        corrected_p.plot_cog(ax=axs[1])
         plt.show()
         print(corrected_epsilon)
         print(r_eff, p.r_half_light, corrected_p.r_half_light)

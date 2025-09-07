@@ -285,6 +285,8 @@ def plot_segment_residual(segm, image, vmin=None, vmax=None, ax=None):
         temp = image.copy()
         temp[np.where(segm.data != 0)] = 0.0
         ax.imshow(temp, vmin=vmin, vmax=vmax)
+        ax.set_xlabel("Pixels")
+        ax.set_ylabel("Pixels")
         mpl_tick_frame(ax=ax, tick_color='white')
 
 
